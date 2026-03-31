@@ -17,6 +17,8 @@ from sklearn.metrics import (
 import joblib
 import matplotlib.pyplot as plt
 import seaborn as sns
+import warnings
+warnings.filterwarnings('ignore')
 
 
 def load_data(use_equilibred=True):
@@ -100,7 +102,8 @@ def train_model(X, y):
     print("✅ Données normalisées (StandardScaler)")
 
     # Entraîner LogisticRegression (binary classification)
-    model = LogisticRegression(max_iter=1000, random_state=42, n_jobs=-1)
+    # Enlever n_jobs pour éviter le warning
+    model = LogisticRegression(max_iter=1000, random_state=42)
     model.fit(X_train_scaled, y_train)
 
     print("✅ Modèle entraîné (Logistic Regression - Classification Binaire)")
@@ -176,8 +179,9 @@ def save_model(model, scaler):
 
 
 def save_metrics(metrics, output_path="models/metrics.txt"):
-    """Sauvegarder les métriques dans un fichier"""
-    with open(output_path, 'w') as f:
+    """Sauvegarder les métriques dans un fichier avec UTF-8 encoding"""
+    # Utiliser utf-8 encoding pour supporter les emojis
+    with open(output_path, 'w', encoding='utf-8') as f:
         f.write("="*70 + "\n")
         f.write("📊 MÉTRIQUES DE PERFORMANCE - LOGISTIC REGRESSION (BINAIRE)\n")
         f.write("="*70 + "\n\n")

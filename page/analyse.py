@@ -1,6 +1,4 @@
-"""
-Page Analyse
-"""
+"""Page Analyse - Version avec données complètes"""
 
 import streamlit as st
 import pandas as pd
@@ -10,355 +8,277 @@ import seaborn as sns
 from pathlib import Path
 
 
+@st.cache_data
 def load_data():
-    """Charger les données"""
-    try:
-        data_path = Path("data/df_sample.csv")
-        if not data_path.exists():
-            st.error(f"❌ Fichier non trouvé: {data_path}")
-            return None
-
-        df = pd.read_csv(data_path)
+    """Charger les données avec feature engineering"""
+    # Essayer d'abord le fichier complet avec features
+    p_full = Path("data/df_with_features.csv")
+    if p_full.exists():
+        df = pd.read_csv(p_full)
+        st.info(f"📊 Données complètes chargées: {len(df):,} accidents")
         return df
-
-    except Exception as e:
-        st.error(f"❌ Erreur lors du chargement: {e}")
-        return None
+    
+    # Sinon essayer le fichier original
+    p_sample = Path("data/df_sample.csv")
+    if p_sample.exists():
+        df = pd.read_csv(p_sample)
+        st.warning(f"⚠️ Données limitées: {len(df):,} accidents (version complète non trouvée)")
+        return df
+    
+    return None
 
 
 def show():
-    """Afficher la page Analyse"""
-
-    # Header
     st.markdown("""
-    <div class="header-main">
-        <h1>📊 Analyse des Données</h1>
-        <p>Visualisez les patterns et tendances des accidents de la route</p>
-    </div>
-    """, unsafe_allow_html=True)
+    <div class="hero">
+        <h1>📊 Analyse des Donnees</h1>
+        <p>Visualisations du dataset UK Accidents avec features avancées</p>
+    </div>""", unsafe_allow_html=True)
 
-    # Charger les données
     data = load_data()
     if data is None:
-        st.stop()
+        st.error("Fichier data/df_sample.csv ou data/df_with_features.csv non trouve.")
+        return
 
-    # Informations sur les données - Cartes statistiques
-    st.markdown("### 📈 Informations sur le Dataset")
+    # --- KPIs ---
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Total accidents", f"{len(data):,}")
+    c2.metric("Variables", len(data.columns))
+    
+    # Vérifier la présence de la colonne Year
+    if 'Year' in data.columns:
+        c3.metric("Annees", f"{data['Year'].min()}-{data['Year'].max()}")
+    
+    # Vérifier la présence de la colonne Speed_limit
+    if 'Speed_limit' in data.columns:
+        c4.metric("Vitesse moy.", f"{data['Speed_limit'].mean():.0f} km/h")
+    else:
+        c4.metric("Features avancées", f"{len([c for c in data.columns if c not in ['Accident_Severity', 'Accident_Severity_Binary']])}")
 
-    col1, col2, col3, col4 = st.columns(4, gap="medium")
-
-    with col1:
-        st.markdown(f"""
-        <div class="stat-card">
-            <div class="stat-label">Total d'accidents</div>
-            <div class="stat-value">{len(data):,}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col2:
-        st.markdown(f"""
-        <div class="stat-card">
-            <div class="stat-label">Nombre de variables</div>
-            <div class="stat-value">{len(data.columns)}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col3:
-        severity_3_count = len(data[data['Accident_Severity'] == 3])
-        st.markdown(f"""
-        <div class="stat-card">
-            <div class="stat-label">Très Grave (3)</div>
-            <div class="stat-value">{severity_3_count:,}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col4:
-        st.markdown(f"""
-        <div class="stat-card">
-            <div class="stat-label">Dataset Original</div>
-            <div class="stat-value">3 Classes</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    # Note sur la classification
     st.markdown("---")
-    st.info("""
-    📌 **À PROPOS DES DONNÉES AFFICHÉES**
 
-    Les données visualisées ci-dessous proviennent du **dataset original (3 classes)**:
-    - Classe 1: Faible (646 accidents)
-    - Classe 2: Grave (6,797 accidents)
-    - Classe 3: Très Grave (42,555 accidents)
-
-    **Le modèle de prédiction** utilise une **version équilibrée et convertie (2 classes)**:
-    - Classe 0 (Minor): Faible + Grave (7,443 accidents)
-    - Classe 1 (Severe): Très Grave (7,443 accidents)
-    """)
-
-    # Onglets pour différentes analyses
     tab1, tab2, tab3, tab4 = st.tabs(
-        ["📈 Distribution", "🔗 Corrélations", "📉 Tendances", "📋 Données"]
-    )
+        ["Distribution", "Correlations", "Tendances", "Donnees"])
 
-    # Tab 1: Distribution
+    # --- Tab 1 : Distribution ---
     with tab1:
-        st.markdown("### Distribution des Variables")
-
         col1, col2 = st.columns(2)
 
+        # Distribution par heure
         with col1:
-            st.markdown("#### Heure de l'accident")
-            fig, ax = plt.subplots(figsize=(10, 5))
-            ax.hist(data['heure_num'].dropna(), bins=24, color='#FF6B6B', edgecolor='black', alpha=0.7)
-            ax.set_xlabel('Heure (0-23)', fontsize=12)
-            ax.set_ylabel('Nombre de cas', fontsize=12)
-            ax.set_title('Distribution des accidents par heure', fontsize=14, fontweight='bold')
-            ax.grid(alpha=0.3)
-            st.pyplot(fig)
+            if 'heure_num' in data.columns:
+                fig, ax = plt.subplots(figsize=(8, 4))
+                ax.hist(data['heure_num'].dropna(), bins=24, color='#2563eb',
+                        edgecolor='white', alpha=.85)
+                ax.set_xlabel('Heure')
+                ax.set_ylabel('Nombre')
+                ax.set_title('Accidents par heure')
+                ax.grid(alpha=.2, axis='y')
+                st.pyplot(fig)
+                plt.close()
+            else:
+                st.info("Colonne 'heure_num' non disponible")
 
+        # Distribution par limite de vitesse
         with col2:
-            st.markdown("#### Limitation de vitesse")
-            fig, ax = plt.subplots(figsize=(10, 5))
-            speed_counts = data['Speed_limit'].value_counts().sort_index()
-            ax.bar(speed_counts.index.astype(str), speed_counts.values, color='#4ECDC4', edgecolor='black', alpha=0.7)
-            ax.set_xlabel('Limite de vitesse (km/h)', fontsize=12)
-            ax.set_ylabel('Nombre de cas', fontsize=12)
-            ax.set_title('Distribution de la limite de vitesse', fontsize=14, fontweight='bold')
-            ax.grid(alpha=0.3, axis='y')
-            st.pyplot(fig)
+            if 'Speed_limit' in data.columns:
+                fig, ax = plt.subplots(figsize=(8, 4))
+                sc = data['Speed_limit'].value_counts().sort_index()
+                ax.bar(sc.index.astype(str), sc.values, color='#16a34a',
+                       edgecolor='white', alpha=.85)
+                ax.set_xlabel('Limite vitesse')
+                ax.set_ylabel('Nombre')
+                ax.set_title('Distribution des limites de vitesse')
+                ax.grid(alpha=.2, axis='y')
+                st.pyplot(fig)
+                plt.close()
+            else:
+                st.info("Colonne 'Speed_limit' non disponible")
 
-        # Distribution de la sévérité
-        st.markdown("#### Sévérité des Accidents (Données Originales - 3 Classes)")
+        # Severite binaire (nouveau modèle)
+        st.markdown("#### Severite (Classification binaire)")
+        
+        # Vérifier quelle colonne de sévérité est disponible
+        if 'Accident_Severity_Binary' in data.columns:
+            severity_col = 'Accident_Severity_Binary'
+            severity_counts = data[severity_col].value_counts()
+            labels = {0: 'Mineur', 1: 'Grave'}
+            colors = ['#16a34a', '#dc2626']
+        elif 'Accident_Severity' in data.columns:
+            severity_col = 'Accident_Severity'
+            severity_counts = data[severity_col].value_counts().sort_index()
+            labels = {1: 'Faible', 2: 'Grave', 3: 'Très Grave'}
+            colors = ['#16a34a', '#f59e0b', '#dc2626']
+        else:
+            st.error("Aucune colonne de sévérité trouvée")
+            severity_counts = None
 
-        col1, col2 = st.columns(2)
+        if severity_counts is not None:
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                fig, ax = plt.subplots(figsize=(7, 4))
+                bars = ax.bar([labels.get(i, str(i)) for i in severity_counts.index],
+                              severity_counts.values, color=colors[:len(severity_counts)], 
+                              edgecolor='white')
+                for b in bars:
+                    ax.text(b.get_x() + b.get_width()/2, b.get_height(),
+                            f'{int(b.get_height()):,}', ha='center', va='bottom',
+                            fontsize=9, fontweight='bold')
+                ax.set_title('Distribution')
+                ax.grid(alpha=.2, axis='y')
+                plt.xticks(rotation=45)
+                st.pyplot(fig)
+                plt.close()
 
-        with col1:
-            fig, ax = plt.subplots(figsize=(8, 6))
-            severity_counts = data['Accident_Severity'].value_counts().sort_index()
-            colors = ['#2ecc71', '#f39c12', '#e74c3c']
-            labels_3 = {1: 'Faible', 2: 'Grave', 3: 'Très Grave'}
-            bars = ax.bar([labels_3.get(i, str(i)) for i in severity_counts.index],
-                          severity_counts.values,
-                          color=colors[:len(severity_counts)],
-                          edgecolor='black', alpha=0.7)
-            ax.set_xlabel('Sévérité', fontsize=12)
-            ax.set_ylabel('Nombre de cas', fontsize=12)
-            ax.set_title('Distribution de la Sévérité (3 Classes)', fontsize=14, fontweight='bold')
-            ax.grid(alpha=0.3, axis='y')
+            with col2:
+                fig, ax = plt.subplots(figsize=(6, 4))
+                ax.pie(severity_counts.values,
+                       labels=[labels.get(i, str(i)) for i in severity_counts.index],
+                       colors=colors[:len(severity_counts)], autopct='%1.1f%%', startangle=90)
+                ax.set_title('Proportions')
+                st.pyplot(fig)
+                plt.close()
 
-            # Ajouter les valeurs sur les barres
-            for bar in bars:
-                height = bar.get_height()
-                ax.text(bar.get_x() + bar.get_width()/2, height,
-                       f'{int(height):,}',
-                       ha='center', va='bottom', fontsize=10, fontweight='bold')
+        # Nouvelles features avancées
+        st.markdown("#### Features avancées créées")
+        
+        advanced_features = ['casualties_per_vehicle', 'is_night', 'bad_weather', 
+                            'bad_road', 'composite_risk_score']
+        existing_features = [f for f in advanced_features if f in data.columns]
+        
+        if existing_features:
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if 'casualties_per_vehicle' in data.columns:
+                    fig, ax = plt.subplots(figsize=(8, 4))
+                    ax.hist(data['casualties_per_vehicle'].clip(upper=5), 
+                           bins=50, color='#2563eb', alpha=.85)
+                    ax.set_xlabel('Victimes par véhicule')
+                    ax.set_ylabel('Nombre')
+                    ax.set_title('Distribution - Victimes par véhicule')
+                    ax.grid(alpha=.2, axis='y')
+                    st.pyplot(fig)
+                    plt.close()
+            
+            with col2:
+                if 'composite_risk_score' in data.columns:
+                    fig, ax = plt.subplots(figsize=(8, 4))
+                    ax.hist(data['composite_risk_score'], bins=50, 
+                           color='#f97316', alpha=.85)
+                    ax.set_xlabel('Score de risque composite')
+                    ax.set_ylabel('Nombre')
+                    ax.set_title('Distribution du score de risque')
+                    ax.grid(alpha=.2, axis='y')
+                    st.pyplot(fig)
+                    plt.close()
 
-            st.pyplot(fig)
-
-        with col2:
-            fig, ax = plt.subplots(figsize=(8, 6))
-            severity_counts = data['Accident_Severity'].value_counts().sort_index()
-            colors = ['#2ecc71', '#f39c12', '#e74c3c']
-            labels_3 = {1: 'Faible', 2: 'Grave', 3: 'Très Grave'}
-            labels = [labels_3.get(i, str(i)) for i in severity_counts.index]
-            ax.pie(severity_counts.values, labels=labels, colors=colors[:len(severity_counts)],
-                   autopct='%1.1f%%', startangle=90)
-            ax.set_title('Proportion de Sévérité (3 Classes)', fontsize=14, fontweight='bold')
-            st.pyplot(fig)
-
-        # Distribution binaire convertie
-        st.markdown("#### Distribution Convertie pour le Modèle (2 Classes)")
-        st.markdown("Le modèle utilise une version équilibrée avec 2 classes:")
-        st.markdown("- **Classe 0 (Minor):** Faible + Grave (combinées)")
-        st.markdown("- **Classe 1 (Severe):** Très Grave")
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            # Créer la distribution binaire
-            minor_count = (data['Accident_Severity'].isin([1, 2])).sum()
-            severe_count = (data['Accident_Severity'] == 3).sum()
-
-            fig, ax = plt.subplots(figsize=(8, 6))
-            binary_counts = [minor_count, severe_count]
-            binary_labels = ['Minor (0)', 'Severe (1)']
-            colors_binary = ['#2ecc71', '#e74c3c']
-            bars = ax.bar(binary_labels, binary_counts, color=colors_binary, edgecolor='black', alpha=0.7)
-            ax.set_xlabel('Classe', fontsize=12)
-            ax.set_ylabel('Nombre de cas', fontsize=12)
-            ax.set_title('Distribution Binaire Convertie', fontsize=14, fontweight='bold')
-            ax.grid(alpha=0.3, axis='y')
-
-            for bar in bars:
-                height = bar.get_height()
-                ax.text(bar.get_x() + bar.get_width()/2, height,
-                       f'{int(height):,}',
-                       ha='center', va='bottom', fontsize=10, fontweight='bold')
-
-            st.pyplot(fig)
-
-        with col2:
-            fig, ax = plt.subplots(figsize=(8, 6))
-            binary_counts = [minor_count, severe_count]
-            binary_labels = ['Minor', 'Severe']
-            colors_binary = ['#2ecc71', '#e74c3c']
-            ax.pie(binary_counts, labels=binary_labels, colors=colors_binary,
-                   autopct='%1.1f%%', startangle=90)
-            ax.set_title('Proportion Binaire Convertie', fontsize=14, fontweight='bold')
-            st.pyplot(fig)
-
-    # Tab 2: Corrélations
+    # --- Tab 2 : Correlations ---
     with tab2:
-        st.markdown("### Analyse des Corrélations")
-
         # Sélectionner les colonnes numériques
-        numeric_cols = [
-            'heure_num', 'Number_of_Vehicles', 'Number_of_Casualties',
-            'Speed_limit', 'Year', '1st_Road_Number', '2nd_Road_Number'
-        ]
+        numeric_cols = data.select_dtypes(include=[np.number]).columns.tolist()
+        
+        # Exclure les colonnes d'index si présentes
+        numeric_cols = [c for c in numeric_cols if c not in ['Unnamed: 0']]
+        
+        # Limiter à 20 colonnes pour la lisibilité
+        if len(numeric_cols) > 20:
+            numeric_cols = numeric_cols[:20]
+        
+        fig, ax = plt.subplots(figsize=(12, 10))
+        corr_matrix = data[numeric_cols].corr()
+        sns.heatmap(corr_matrix, annot=True, cmap='RdBu_r', center=0,
+                    fmt='.2f', square=True, ax=ax, annot_kws={'size': 8})
+        ax.set_title('Matrice de correlation')
+        plt.xticks(rotation=45, ha='right')
+        plt.tight_layout()
+        st.pyplot(fig)
+        plt.close()
 
-        available_cols = [col for col in numeric_cols if col in data.columns]
-
-        if len(available_cols) > 1:
-            numeric_data = data[available_cols].copy()
-            corr_matrix = numeric_data.corr()
-
-            fig, ax = plt.subplots(figsize=(12, 10))
-            sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', center=0,
-                        fmt='.2f', square=True, ax=ax, cbar_kws={'label': 'Corrélation'})
-            ax.set_title('Matrice de Corrélation - Variables Numériques', fontsize=14, fontweight='bold')
-            st.pyplot(fig)
-
-            st.markdown("""
-            **Interprétation:**
-            - Valeurs proches de **+1**: Corrélation positive (augmentation simultanée)
-            - Valeurs proches de **-1**: Corrélation négative (variation inverse)
-            - Valeurs proches de **0**: Pas de corrélation
-            """)
-
-    # Tab 3: Tendances
+    # --- Tab 3 : Tendances ---
     with tab3:
-        st.markdown("### Tendances par Année")
+        # Par annee
+        if 'Year' in data.columns:
+            by_year = data['Year'].value_counts().sort_index()
+            fig, ax = plt.subplots(figsize=(10, 4))
+            ax.bar(by_year.index.astype(str), by_year.values,
+                   color='#2563eb', edgecolor='white', alpha=.85)
+            ax.set_title('Accidents par annee')
+            ax.set_xlabel('Annee')
+            ax.grid(alpha=.2, axis='y')
+            plt.xticks(rotation=45)
+            st.pyplot(fig)
+            plt.close()
 
-        # Nombre d'accidents par année
-        fig, ax = plt.subplots(figsize=(12, 6))
+        # Par jour de semaine
+        if 'Day_of_Week' in data.columns:
+            days = {1: 'Lun', 2: 'Mar', 3: 'Mer', 4: 'Jeu',
+                    5: 'Ven', 6: 'Sam', 7: 'Dim'}
+            tmp = data.copy()
+            tmp['Jour'] = tmp['Day_of_Week'].map(days)
+            
+            if 'Accident_Severity_Binary' in tmp.columns:
+                severity_agg = tmp.groupby('Jour')['Accident_Severity_Binary'].mean()
+                fig, ax = plt.subplots(figsize=(10, 4))
+                severity_agg.reindex([d for d in days.values() if d in severity_agg.index]).plot(kind='bar', ax=ax, color='#dc2626')
+                ax.set_title('Proportion d\'accidents graves par jour')
+                ax.set_xlabel('Jour')
+                ax.set_ylabel('Proportion de graves (%)')
+                ax.set_ylim(0, 1)
+                ax.grid(alpha=.2, axis='y')
+                plt.xticks(rotation=0)
+                st.pyplot(fig)
+                plt.close()
 
-        accidents_by_year = data['Year'].value_counts().sort_index()
-        colors_year = plt.cm.viridis(np.linspace(0, 1, len(accidents_by_year)))
-
-        bars = ax.bar(accidents_by_year.index.astype(str), accidents_by_year.values, color=colors_year, edgecolor='black', alpha=0.7)
-        ax.set_xlabel('Année', fontsize=12)
-        ax.set_ylabel('Nombre d\'accidents', fontsize=12)
-        ax.set_title('Nombre d\'accidents par année', fontsize=14, fontweight='bold')
-        ax.grid(alpha=0.3, axis='y')
-
-        # Ajouter les valeurs sur les barres
-        for bar in bars:
-            height = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width()/2, height, f'{int(height):,}',
-                   ha='center', va='bottom', fontweight='bold')
-
-        st.pyplot(fig)
-
-        # Sévérité par jour de la semaine
-        st.markdown("### Sévérité par Jour de la Semaine (Original - 3 Classes)")
-
-        fig, ax = plt.subplots(figsize=(12, 6))
-
-        # Ordre des jours
-        jour_order = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
-        day_mapping = {0: 'Lundi', 1: 'Mardi', 2: 'Mercredi', 3: 'Jeudi', 4: 'Vendredi', 5: 'Samedi', 6: 'Dimanche'}
-
-        data_copy = data.copy()
-        data_copy['Day_Name'] = data_copy['Day_of_Week'].map(day_mapping)
-
-        severite_by_day = pd.crosstab(data_copy['Day_Name'], data_copy['Accident_Severity'])
-        severite_by_day = severite_by_day.reindex([d for d in jour_order if d in severite_by_day.index])
-
-        colors_3class = ['#2ecc71', '#f39c12', '#e74c3c']
-        severite_by_day.plot(kind='bar', ax=ax, color=colors_3class[:len(severite_by_day.columns)])
-        ax.set_xlabel('Jour de la Semaine', fontsize=12)
-        ax.set_ylabel('Nombre de cas', fontsize=12)
-        ax.set_title('Distribution de la Sévérité par Jour de la Semaine (3 Classes)', fontsize=14, fontweight='bold')
-        ax.legend(title='Sévérité', labels=['Faible', 'Grave', 'Très Grave'][:len(severite_by_day.columns)])
-        ax.grid(alpha=0.3, axis='y')
-        plt.xticks(rotation=45)
-
-        st.pyplot(fig)
-
-    # Tab 4: Données brutes
+    # --- Tab 4 : Donnees ---
     with tab4:
-        st.markdown("### Tableau de Données (Original - 3 Classes)")
-
-        # Options de filtrage
         col1, col2 = st.columns(2)
-
+        
         with col1:
-            severity_options = sorted(data['Accident_Severity'].unique())
-            severity_labels = {1: '1 - Faible', 2: '2 - Grave', 3: '3 - Très Grave'}
-            selected_severity = st.multiselect(
-                "Filtrer par Sévérité",
-                severity_options,
-                default=severity_options,
-                format_func=lambda x: severity_labels.get(x, str(x))
-            )
-
+            # Filtrer par sévérité
+            if 'Accident_Severity_Binary' in data.columns:
+                severity_options = {'Mineur': 0, 'Grave': 1}
+                sev_filter = st.multiselect(
+                    "Severite", 
+                    options=list(severity_options.keys()),
+                    default=list(severity_options.keys())
+                )
+                sev_values = [severity_options[s] for s in sev_filter]
+            elif 'Accident_Severity' in data.columns:
+                sev_filter = st.multiselect(
+                    "Severite", 
+                    options=sorted(data['Accident_Severity'].unique()),
+                    default=sorted(data['Accident_Severity'].unique()),
+                    format_func=lambda x: {1: 'Faible', 2: 'Grave', 3: 'Tres Grave'}.get(x, str(x))
+                )
+                sev_values = sev_filter
+        
         with col2:
-            selected_year = st.multiselect(
-                "Filtrer par Année",
-                sorted(data['Year'].unique()),
-                default=sorted(data['Year'].unique())
-            )
-
+            if 'Year' in data.columns:
+                year_filter = st.multiselect(
+                    "Annee", 
+                    sorted(data['Year'].unique()),
+                    default=sorted(data['Year'].unique())
+                )
+        
         # Appliquer les filtres
-        filtered_data = data[
-            (data['Accident_Severity'].isin(selected_severity)) &
-            (data['Year'].isin(selected_year))
-        ]
-
-        st.markdown(f"**Total:** {len(filtered_data):,} enregistrements")
-
-        # Afficher le tableau
-        st.dataframe(
-            filtered_data.reset_index(drop=True),
-            use_container_width=True,
-            height=400
-        )
-
-        # Statistiques résumées
-        st.markdown("### Statistiques Résumées")
-
-        col1, col2, col3, col4 = st.columns(4)
-
-        with col1:
-            st.metric(
-                "Heure Moyenne",
-                f"{filtered_data['heure_num'].mean():.1f}h"
-            )
-
-        with col2:
-            st.metric(
-                "Véhicules Moyens",
-                f"{filtered_data['Number_of_Vehicles'].mean():.1f}"
-            )
-
-        with col3:
-            st.metric(
-                "Victimes Moyennes",
-                f"{filtered_data['Number_of_Casualties'].mean():.1f}"
-            )
-
-        with col4:
-            st.metric(
-                "Total Enregistrements",
-                f"{len(filtered_data):,}"
-            )
-
-        # Télécharger les données
-        csv = filtered_data.to_csv(index=False)
-        st.download_button(
-            label="📥 Télécharger les données (CSV)",
-            data=csv,
-            file_name="donnees_accidents.csv",
-            mime="text/csv"
-        )
+        filtered = data.copy()
+        if 'sev_values' in locals() and sev_values:
+            if 'Accident_Severity_Binary' in filtered.columns:
+                filtered = filtered[filtered['Accident_Severity_Binary'].isin(sev_values)]
+            elif 'Accident_Severity' in filtered.columns:
+                filtered = filtered[filtered['Accident_Severity'].isin(sev_values)]
+        
+        if 'year_filter' in locals() and year_filter:
+            filtered = filtered[filtered['Year'].isin(year_filter)]
+        
+        st.caption(f"{len(filtered):,} enregistrements")
+        
+        # Sélectionner les colonnes à afficher
+        display_cols = [c for c in filtered.columns if c not in ['Unnamed: 0']][:15]
+        st.dataframe(filtered[display_cols].reset_index(drop=True),
+                     use_container_width=True, height=400)
+        
+        st.download_button("Telecharger CSV", filtered.to_csv(index=False),
+                           "accidents_analyses.csv", "text/csv")

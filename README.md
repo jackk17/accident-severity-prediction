@@ -94,7 +94,7 @@ streamlit run app.py
 
 ### ℹ️ Page À Propos (`pages/apropos.py`)
 - Informations du projet
-- **Contributeurs:** Agbegbo Jacque
+- **Contributeurs:** AGBEGBO Espoir Jacques Kwassi
 - Stack technologique
 - Performance du modèle
 - Feuille de route
@@ -322,7 +322,7 @@ MIT License - Libre d'utilisation
 ✅ **Interface Belle** = Utilisateurs heureux
 ✅ **Modèle Précis** = Prédictions fiables
 ✅ **Code Propre** = Extensible
-✅ **Contributeur Identifié** = Agbegbo Jacque
+✅ **Contributeur Identifié** =AGBEGBO Espoir Jacques Kwassi
 
 ---
 

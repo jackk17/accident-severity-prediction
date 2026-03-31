@@ -1,0 +1,23 @@
+[
+    "casualties_per_vehicle",
+    "risk_vehicles_casualties",
+    "is_night",
+    "night_weekend",
+    "composite_risk_score",
+    "speed_risk_score",
+    "high_speed_night",
+    "night_highspeed_risk",
+    "many_vehicles_night",
+    "rush_hour_urban",
+    "bad_weather",
+    "bad_road",
+    "poor_light",
+    "Number_of_Vehicles",
+    "Number_of_Casualties",
+    "Speed_limit",
+    "Urban_or_Rural_Area",
+    "Day_of_Week",
+    "heure_num",
+    "Month",
+    "Year"
+]

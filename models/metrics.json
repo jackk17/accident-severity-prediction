@@ -1,0 +1,49 @@
+{
+    "accuracy": 0.6202,
+    "f1_score": 0.5178,
+    "roc_auc": 0.6548,
+    "recall_grave": 0.61,
+    "precision_grave": 0.45,
+    "best_features": [
+        {
+            "feature": "risk_vehicles_casualties",
+            "importance": 0.16061313406149677
+        },
+        {
+            "feature": "casualties_per_vehicle",
+            "importance": 0.15489310271141354
+        },
+        {
+            "feature": "Number_of_Vehicles",
+            "importance": 0.1529476185672409
+        },
+        {
+            "feature": "composite_risk_score",
+            "importance": 0.09428283665006706
+        },
+        {
+            "feature": "Speed_limit",
+            "importance": 0.07705301391476083
+        },
+        {
+            "feature": "speed_risk_score",
+            "importance": 0.07118674604562093
+        },
+        {
+            "feature": "Urban_or_Rural_Area",
+            "importance": 0.061399086805235516
+        },
+        {
+            "feature": "Number_of_Casualties",
+            "importance": 0.054276756620459214
+        },
+        {
+            "feature": "heure_num",
+            "importance": 0.04699094567267139
+        },
+        {
+            "feature": "is_night",
+            "importance": 0.022934752303529416
+        }
+    ]
+}

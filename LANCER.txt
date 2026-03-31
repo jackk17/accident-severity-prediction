@@ -74,7 +74,7 @@ OPTION 4: Sur Windows (CMD)
 
   ℹ️ Page À Propos
      • Info du projet
-     • Contributeur: Agbegbo Jacque
+     • Contributeur: AGBEGBO Espoir Jacques Kwassi
      • Stack technologique
      • FAQ avancée
 
@@ -110,7 +110,7 @@ OPTION 4: Sur Windows (CMD)
 
 ═══════════════════════════════════════════════════════════════════════════
 
-Contributeur: Agbegbo Jacque
+Contributeur:AGBEGBO Espoir Jacques Kwassi
 Version: 1.0.0
 Language: 100% Français
 
