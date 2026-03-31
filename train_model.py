@@ -1,6 +1,6 @@
 """
 🚗 Script d'entraînement du modèle - Classification Binaire
-Charge les données réelles et entraîne le modèle LogisticRegression
+Charge les données réelles et entraîne le modèle Random Forest
 pour prédire la sévérité des accidents (Minor vs Severe)
 """
 
@@ -9,15 +9,13 @@ import numpy as np
 from pathlib import Path
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.linear_model import LogisticRegression
-import json
+from sklearn.ensemble import RandomForestClassifier  # ✅ AJOUTÉ
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
-    confusion_matrix, classification_report, roc_auc_score, roc_curve
+    confusion_matrix, classification_report, roc_auc_score
 )
 import joblib
-import matplotlib.pyplot as plt
-import seaborn as sns
+import json
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -59,6 +57,8 @@ def load_data(use_equilibred=True):
     
     print(f"❌ Aucun fichier de données trouvé!")
     return None
+
+
 def prepare_data(df):
     """Préparer les données pour l'entraînement"""
     print("\n🔧 Préparation des données...")
@@ -72,21 +72,24 @@ def prepare_data(df):
         print(f"✅ Cible: {target_col}")
     else:
         print("❌ Colonne cible non trouvée!")
-        return None, None
+        return None, None, None
     
     # Séparer X et y
     feature_cols = [col for col in df.columns if col != target_col]
-    X = df[feature_cols]
-    y = df[target_col]
+    X = df[feature_cols].copy()
+    y = df[target_col].copy()
     
     # Vérifier que toutes les colonnes sont numériques
+    cols_to_drop = []
     for col in X.columns:
         if X[col].dtype == 'object':
             print(f"⚠️ Colonne non numérique détectée: {col}")
             print(f"   Valeurs uniques: {X[col].unique()[:5]}")
-            # Supprimer la colonne problématique
-            X = X.drop(columns=[col])
-            print(f"   → Colonne supprimée")
+            cols_to_drop.append(col)
+    
+    if cols_to_drop:
+        X = X.drop(columns=cols_to_drop)
+        print(f"✅ Colonnes supprimées: {cols_to_drop}")
     
     print(f"✅ Features shape: {X.shape}")
     print(f"✅ Target shape: {y.shape}")
@@ -96,7 +99,8 @@ def prepare_data(df):
         pct = (count / len(y)) * 100
         print(f"   Classe {cls}: {count:>7} ({pct:>6.2f}%)")
     
-    return X, y
+    return X, y, X.columns.tolist()  # ✅ Retourne aussi les noms des features
+
 
 def train_model(X, y):
     """Entraîner le modèle Random Forest"""
@@ -171,11 +175,14 @@ def train_model(X, y):
         'recall': recall,
         'f1': f1,
         'roc_auc': roc_auc,
-        'confusion_matrix': cm,
+        'recall_grave': recall,  # ✅ Ajout pour compatibilité avec metrics.json
+        'f1_score': f1,          # ✅ Ajout pour compatibilité
+        'confusion_matrix': cm.tolist(),
         'y_test': y_test,
         'y_pred': y_pred,
         'y_pred_proba': y_pred_proba
     }
+
 
 def save_model(model, scaler):
     """Sauvegarder le modèle et le scaler"""
@@ -196,21 +203,28 @@ def save_model(model, scaler):
     print(f"✅ Scaler sauvegardé: {scaler_path}")
 
     return model_path, scaler_path
-def save_metrics(metrics, output_path="models/metrics.txt"):
-    """Sauvegarder les métriques dans un fichier avec UTF-8 encoding"""
-    # Utiliser utf-8 encoding pour supporter les emojis
-    with open(output_path, 'w', encoding='utf-8') as f:
-        f.write("="*70 + "\n")
-        f.write("📊 MÉTRIQUES DE PERFORMANCE - LOGISTIC REGRESSION (BINAIRE)\n")
-        f.write("="*70 + "\n\n")
-        f.write(f"Accuracy:    {metrics['accuracy']:.4f} ({metrics['accuracy']*100:.2f}%)\n")
-        f.write(f"Precision:   {metrics['precision']:.4f}\n")
-        f.write(f"Recall:      {metrics['recall']:.4f}\n")
-        f.write(f"F1-Score:    {metrics['f1']:.4f}\n")
-        f.write(f"ROC-AUC:     {metrics['roc_auc']:.4f}\n")
-        f.write("\nConfusion Matrix:\n")
-        f.write(f"{metrics['confusion_matrix']}\n")
 
+
+def save_metrics(metrics, output_path="models/metrics.json"):
+    """Sauvegarder les métriques dans un fichier JSON"""
+    # Créer dossier models s'il n'existe pas
+    models_dir = Path("models")
+    models_dir.mkdir(exist_ok=True)
+    
+    # Préparer les données pour JSON (sans objets non sérialisables)
+    metrics_json = {
+        'accuracy': metrics['accuracy'],
+        'precision': metrics['precision'],
+        'recall': metrics['recall'],
+        'f1_score': metrics['f1_score'],
+        'roc_auc': metrics['roc_auc'],
+        'recall_grave': metrics['recall_grave'],
+        'confusion_matrix': metrics['confusion_matrix']
+    }
+    
+    with open(output_path, 'w', encoding='utf-8') as f:
+        json.dump(metrics_json, f, indent=4, ensure_ascii=False)
+    
     print(f"✅ Métriques sauvegardées: {output_path}")
 
 
@@ -225,6 +239,7 @@ def save_features(feature_names):
     
     print(f"✅ Features sauvegardées: {features_path}")
 
+
 def main(use_equilibred=True):
     """Fonction principale"""
     print("╔════════════════════════════════════════════════════════╗")
@@ -237,8 +252,8 @@ def main(use_equilibred=True):
     if df is None:
         return
 
-    # Préparer les données
-    X, y = prepare_data(df)
+    # Préparer les données (retourne aussi les noms des features)
+    X, y, feature_names = prepare_data(df)
     if X is None:
         return
 
@@ -248,18 +263,20 @@ def main(use_equilibred=True):
     # Sauvegarder
     model_path, scaler_path = save_model(model, scaler)
     save_metrics(metrics)
+    save_features(feature_names)  # ✅ AJOUTÉ
 
     # Résumé final
     print("\n╔════════════════════════════════════════════════════════╗")
     print("║               ✅ ENTRAÎNEMENT RÉUSSI                  ║")
     print("╚════════════════════════════════════════════════════════╝")
     print(f"\n📈 Accuracy finale: {metrics['accuracy']*100:.2f}%")
-    print(f"📊 F1-Score: {metrics['f1']:.4f}")
+    print(f"📊 F1-Score: {metrics['f1_score']:.4f}")
     print(f"📊 ROC-AUC: {metrics['roc_auc']:.4f}")
     print(f"\n📁 Fichiers sauvegardés:")
     print(f"   • Modèle: {model_path}")
     print(f"   • Scaler: {scaler_path}")
-    print(f"   • Métriques: models/metrics.txt")
+    print(f"   • Métriques: models/metrics.json")
+    print(f"   • Features: models/features.json")
     print(f"\n🚀 Vous pouvez maintenant lancer: streamlit run app.py")
 
 
