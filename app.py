@@ -326,10 +326,12 @@ with st.sidebar:
 # IMPORT DES PAGES
 # ═══════════════════════════════════════════════════════════════════════════
 
-from page import accueil, prediction, analyse, apropos
+from page import acceuil, prediction, analyse, apropos
+
+
 
 pages_map = {
-    "🏠 Accueil": accueil,
+    "🏠 Accueil": acceuil,
     "🎯 Prédiction": prediction,
     "📊 Analyse": analyse,
     "ℹ️ À Propos": apropos
