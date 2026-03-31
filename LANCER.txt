@@ -1,0 +1,117 @@
+╔═══════════════════════════════════════════════════════════════════════╗
+║                                                                       ║
+║          🚀 COMMENT LANCER L'APPLICATION - GUIDE RAPIDE 🚀           ║
+║                                                                       ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+OPTION 1: Si vous avez déjà le venv activé
+═══════════════════════════════════════════════════════════════════════
+
+  $ python train_model.py
+  $ streamlit run app.py
+
+  Puis ouvrez: http://localhost:8501
+
+
+OPTION 2: Si vous n'avez pas encore le venv activé
+═══════════════════════════════════════════════════════════════════════
+
+  $ source venv/bin/activate
+  $ python train_model.py
+  $ streamlit run app.py
+
+  Puis ouvrez: http://localhost:8501
+
+
+OPTION 3: Sur Windows (PowerShell)
+═══════════════════════════════════════════════════════════════════════
+
+  PS> .\venv\Scripts\Activate.ps1
+  PS> python train_model.py
+  PS> streamlit run app.py
+
+  Puis ouvrez: http://localhost:8501
+
+
+OPTION 4: Sur Windows (CMD)
+═══════════════════════════════════════════════════════════════════════
+
+  > venv\Scripts\activate.bat
+  > python train_model.py
+  > streamlit run app.py
+
+  Puis ouvrez: http://localhost:8501
+
+═══════════════════════════════════════════════════════════════════════════
+
+ℹ️ NOTES IMPORTANTES:
+
+  • Le fichier venv/ contient déjà les dépendances installées ✅
+  • Les modèles seront créés dans le dossier models/
+  • Vous pouvez arrêter l'app avec: Ctrl+C
+  • Pour relancer: source venv/bin/activate && streamlit run app.py
+
+═══════════════════════════════════════════════════════════════════════════
+
+✨ L'APPLICATION INCLUT:
+
+  🏠 Page Accueil
+     • Vue d'ensemble
+     • Statistiques
+     • FAQ
+
+  🎯 Page Prédiction
+     • Formulaire interactif
+     • 6 paramètres d'entrée
+     • Résultats en temps réel
+     • Recommandations
+
+  📊 Page Analyse
+     • 4 onglets (Distribution, Corrélations, Tendances, Données)
+     • Graphiques interactifs
+     • Filtres
+     • Export CSV
+
+  ℹ️ Page À Propos
+     • Info du projet
+     • Contributeur: Agbegbo Jacque
+     • Stack technologique
+     • FAQ avancée
+
+═══════════════════════════════════════════════════════════════════════════
+
+🌐 INTERFACE:
+
+  ✅ 100% EN FRANÇAIS
+  ✅ Design moderne avec gradients
+  ✅ Navigation intuitive
+  ✅ Pages modulaires (faciles à modifier)
+  ✅ Responsive design
+
+═══════════════════════════════════════════════════════════════════════════
+
+📝 POUR MODIFIER L'APPLICATION:
+
+  • Page d'accueil?  → Modifiez: pages/accueil.py
+  • Prédiction?      → Modifiez: pages/prediction.py
+  • Graphiques?      → Modifiez: pages/analyse.py
+  • Infos?           → Modifiez: pages/apropos.py
+  • Navigation?      → Modifiez: app.py
+
+═══════════════════════════════════════════════════════════════════════════
+
+🎯 PROCHAINES ÉTAPES:
+
+  1. Lancer l'app (voir ci-dessus)
+  2. Explorez les 4 pages
+  3. Testez une prédiction
+  4. Regardez les graphiques
+  5. Lisez les infos contributeur
+
+═══════════════════════════════════════════════════════════════════════════
+
+Contributeur: Agbegbo Jacque
+Version: 1.0.0
+Language: 100% Français
+
+Amusez-vous! 🚗✨
