@@ -10,6 +10,7 @@ from pathlib import Path
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
+import json
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     confusion_matrix, classification_report, roc_auc_score, roc_curve
@@ -22,15 +23,22 @@ warnings.filterwarnings('ignore')
 
 
 def load_data(use_equilibred=True):
-    """Charger les données"""
-
+    """Charger les données - priorité à l'échantillon pour le cloud"""
+    
+    # 1. Essayer d'abord l'échantillon (plus rapide pour le cloud)
+    sample_path = Path("data/df_with_features_sample.csv")
+    if sample_path.exists():
+        print("✅ Utilisation de l'ÉCHANTILLON (df_with_features_sample.csv)")
+        return pd.read_csv(sample_path)
+    
+    # 2. Essayer le dataset équilibré
     if use_equilibred:
         data_path = Path("data/df_equilibre_binaire.csv")
         if data_path.exists():
             print("✅ Utilisant le dataset ÉQUILIBRÉ (df_equilibre_binaire.csv)")
+            return pd.read_csv(data_path)
         else:
-            print("⚠️  Dataset équilibré non trouvé. Lancer: python nouveau_traitement.py")
-            print("   Utilisant le dataset original à la place...")
+            print("⚠️  Dataset équilibré non trouvé. Utilisation du dataset original...")
             data_path = Path("data/df_sample.csv")
     else:
         data_path = Path("data/df_sample.csv")
@@ -44,12 +52,31 @@ def load_data(use_equilibred=True):
     print(f"✅ Données chargées: {df.shape}")
     return df
 
-
 def prepare_data(df):
-    """Préparer les données"""
+    """Préparer les données pour l'entraînement"""
     print("\n🔧 Préparation des données...")
 
-    # Vérifier les colonnes
+    # Vérifier si le fichier contient les nouvelles features
+    if 'Accident_Severity_Binary' in df.columns:
+        # Fichier avec features avancées
+        print("✅ Fichier avec features avancées détecté")
+        
+        # Sélectionner les features (sans la cible)
+        feature_cols = [col for col in df.columns if col not in ['Accident_Severity_Binary', 'Accident_Severity']]
+        X = df[feature_cols]
+        y = df['Accident_Severity_Binary']
+        
+        print(f"✅ Features shape: {X.shape}")
+        print(f"✅ Target shape: {y.shape}")
+        print(f"\nDistribution de la cible:")
+        for cls in sorted(y.unique()):
+            count = (y == cls).sum()
+            pct = (count / len(y)) * 100
+            print(f"   Classe {cls}: {count:>7} ({pct:>6.2f}%)")
+        
+        return X, y
+    
+    # Sinon, utiliser l'ancienne méthode
     expected_cols = [
         '1st_Road_Number', 'Police_Force', 'Year', 'heure_num',
         'Day_of_Week', '2nd_Road_Number', '1st_Road_Class',
@@ -80,11 +107,9 @@ def prepare_data(df):
         print(f"   Classe {cls} ({severity_labels.get(cls, 'Unknown')}): {count:>7} ({pct:>6.2f}%)")
 
     return X, y
-
-
 def train_model(X, y):
-    """Entraîner le modèle"""
-    print("\n🤖 Entraînement du modèle...")
+    """Entraîner le modèle Random Forest"""
+    print("\n🤖 Entraînement du modèle Random Forest...")
 
     # Diviser train/test
     X_train, X_test, y_train, y_test = train_test_split(
@@ -101,12 +126,17 @@ def train_model(X, y):
 
     print("✅ Données normalisées (StandardScaler)")
 
-    # Entraîner LogisticRegression (binary classification)
-    # Enlever n_jobs pour éviter le warning
-    model = LogisticRegression(max_iter=1000, random_state=42)
+    # Entraîner Random Forest
+    model = RandomForestClassifier(
+        n_estimators=100,
+        max_depth=10,
+        class_weight='balanced',
+        random_state=42,
+        n_jobs=-1
+    )
     model.fit(X_train_scaled, y_train)
 
-    print("✅ Modèle entraîné (Logistic Regression - Classification Binaire)")
+    print("✅ Modèle entraîné (Random Forest - Classification Binaire)")
 
     # Prédictions
     y_pred = model.predict(X_test_scaled)
@@ -156,7 +186,6 @@ def train_model(X, y):
         'y_pred_proba': y_pred_proba
     }
 
-
 def save_model(model, scaler):
     """Sauvegarder le modèle et le scaler"""
     print("\n💾 Sauvegarde du modèle...")
@@ -165,19 +194,17 @@ def save_model(model, scaler):
     models_dir = Path("models")
     models_dir.mkdir(exist_ok=True)
 
-    # Sauvegarder le modèle
-    model_path = models_dir / "logistic_regression_model.pkl"
+    # Sauvegarder le modèle (nom compatible avec prediction.py)
+    model_path = models_dir / "random_forest_model.pkl"
     joblib.dump(model, model_path)
     print(f"✅ Modèle sauvegardé: {model_path}")
 
-    # Sauvegarder le scaler
-    scaler_path = models_dir / "standard_scaler.pkl"
+    # Sauvegarder le scaler (nom compatible avec prediction.py)
+    scaler_path = models_dir / "scaler.pkl"
     joblib.dump(scaler, scaler_path)
     print(f"✅ Scaler sauvegardé: {scaler_path}")
 
     return model_path, scaler_path
-
-
 def save_metrics(metrics, output_path="models/metrics.txt"):
     """Sauvegarder les métriques dans un fichier avec UTF-8 encoding"""
     # Utiliser utf-8 encoding pour supporter les emojis
@@ -195,6 +222,17 @@ def save_metrics(metrics, output_path="models/metrics.txt"):
 
     print(f"✅ Métriques sauvegardées: {output_path}")
 
+
+def save_features(feature_names):
+    """Sauvegarder la liste des features"""
+    models_dir = Path("models")
+    models_dir.mkdir(exist_ok=True)
+    
+    features_path = models_dir / "features.json"
+    with open(features_path, 'w', encoding='utf-8') as f:
+        json.dump(feature_names, f, indent=4, ensure_ascii=False)
+    
+    print(f"✅ Features sauvegardées: {features_path}")
 
 def main(use_equilibred=True):
     """Fonction principale"""

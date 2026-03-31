@@ -15,6 +15,7 @@ env/
 
 # Model files (trop gros)
 *.joblib
+*pkl
 
 # OS
 .DS_Store

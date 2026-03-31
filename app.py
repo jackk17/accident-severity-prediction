@@ -1,13 +1,55 @@
 """Application Streamlit - Prediction de Severite d'Accidents"""
 
 import streamlit as st
+from pathlib import Path
+import sys
+import os
 
+# Configuration de la page (première commande Streamlit)
 st.set_page_config(
     page_title="Severite d'Accidents",
     page_icon="🚗",
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+# --- Vérification et entraînement du modèle ---
+def check_and_train_model():
+    """Vérifier si le modèle existe, sinon l'entraîner"""
+    model_path = Path("models/random_forest_model.pkl")
+    scaler_path = Path("models/scaler.pkl")
+    
+    # Si le modèle existe déjà, ne rien faire
+    if model_path.exists() and scaler_path.exists():
+        return True
+    
+    # Sinon, entraîner le modèle
+    with st.spinner("🔄 Premier lancement: entraînement du modèle en cours (2-3 minutes)..."):
+        try:
+            # Créer le dossier models s'il n'existe pas
+            Path("models").mkdir(exist_ok=True)
+            
+            # Importer et exécuter l'entraînement
+            import train_model
+            
+            # Utiliser l'échantillon pour un entraînement plus rapide
+            train_model.main(use_equilibred=True)
+            
+            st.success("✅ Modèle entraîné avec succès!")
+            return True
+            
+        except Exception as e:
+            st.error(f"❌ Erreur lors de l'entraînement: {e}")
+            st.error("Veuillez vérifier que le fichier data/df_with_features_sample.csv existe.")
+            st.stop()
+            return False
+
+# Exécuter la vérification avant de charger les pages
+model_ready = check_and_train_model()
+
+# Si le modèle n'est pas prêt, arrêter l'exécution
+if not model_ready:
+    st.stop()
 
 # --- CSS ---
 st.markdown("""<style>
@@ -95,6 +137,7 @@ with st.sidebar:
 # --- Pages ---
 from page import acceuil, prediction, analyse, apropos
 
+# Afficher la page sélectionnée
 if page == "Accueil":
     acceuil.show()  # Notez les parenthèses
 elif page == "Prediction":
