@@ -23,90 +23,81 @@ warnings.filterwarnings('ignore')
 
 
 def load_data(use_equilibred=True):
-    """Charger les données - priorité à l'échantillon pour le cloud"""
+    """Charger les données - priorité à l'échantillon nettoyé"""
     
-    # 1. Essayer d'abord l'échantillon (plus rapide pour le cloud)
+    # 1. Essayer l'échantillon nettoyé (recommandé)
+    clean_sample_path = Path("data/df_with_features_sample_clean.csv")
+    if clean_sample_path.exists():
+        print("✅ Utilisation de l'ÉCHANTILLON NETTOYÉ (df_with_features_sample_clean.csv)")
+        return pd.read_csv(clean_sample_path)
+    
+    # 2. Essayer l'échantillon original
     sample_path = Path("data/df_with_features_sample.csv")
     if sample_path.exists():
-        print("✅ Utilisation de l'ÉCHANTILLON (df_with_features_sample.csv)")
-        return pd.read_csv(sample_path)
+        print("⚠️ Utilisation de l'échantillon original - tentative de nettoyage...")
+        df = pd.read_csv(sample_path)
+        # Garder uniquement les colonnes numériques
+        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+        if 'Accident_Severity_Binary' in df.columns:
+            numeric_cols.append('Accident_Severity_Binary')
+        df = df[numeric_cols]
+        print(f"✅ Nettoyé: {df.shape}")
+        return df
     
-    # 2. Essayer le dataset équilibré
+    # 3. Essayer le dataset équilibré
     if use_equilibred:
         data_path = Path("data/df_equilibre_binaire.csv")
         if data_path.exists():
-            print("✅ Utilisant le dataset ÉQUILIBRÉ (df_equilibre_binaire.csv)")
+            print("✅ Utilisant le dataset ÉQUILIBRÉ")
             return pd.read_csv(data_path)
-        else:
-            print("⚠️  Dataset équilibré non trouvé. Utilisation du dataset original...")
-            data_path = Path("data/df_sample.csv")
-    else:
-        data_path = Path("data/df_sample.csv")
-        print("✅ Utilisant le dataset ORIGINAL (df_sample.csv)")
-
-    if not data_path.exists():
-        print(f"❌ Fichier non trouvé: {data_path}")
-        return None
-
-    df = pd.read_csv(data_path)
-    print(f"✅ Données chargées: {df.shape}")
-    return df
-
+    
+    # 4. Fallback
+    data_path = Path("data/df_sample.csv")
+    if data_path.exists():
+        print("⚠️ Utilisant le dataset original")
+        return pd.read_csv(data_path)
+    
+    print(f"❌ Aucun fichier de données trouvé!")
+    return None
 def prepare_data(df):
     """Préparer les données pour l'entraînement"""
     print("\n🔧 Préparation des données...")
 
-    # Vérifier si le fichier contient les nouvelles features
+    # Identifier la colonne cible
     if 'Accident_Severity_Binary' in df.columns:
-        # Fichier avec features avancées
-        print("✅ Fichier avec features avancées détecté")
-        
-        # Sélectionner les features (sans la cible)
-        feature_cols = [col for col in df.columns if col not in ['Accident_Severity_Binary', 'Accident_Severity']]
-        X = df[feature_cols]
-        y = df['Accident_Severity_Binary']
-        
-        print(f"✅ Features shape: {X.shape}")
-        print(f"✅ Target shape: {y.shape}")
-        print(f"\nDistribution de la cible:")
-        for cls in sorted(y.unique()):
-            count = (y == cls).sum()
-            pct = (count / len(y)) * 100
-            print(f"   Classe {cls}: {count:>7} ({pct:>6.2f}%)")
-        
-        return X, y
-    
-    # Sinon, utiliser l'ancienne méthode
-    expected_cols = [
-        '1st_Road_Number', 'Police_Force', 'Year', 'heure_num',
-        'Day_of_Week', '2nd_Road_Number', '1st_Road_Class',
-        'Number_of_Vehicles', 'Number_of_Casualties', 'Speed_limit',
-        'Accident_Severity'
-    ]
-
-    missing_cols = [col for col in expected_cols if col not in df.columns]
-    if missing_cols:
-        print(f"❌ Colonnes manquantes: {missing_cols}")
+        target_col = 'Accident_Severity_Binary'
+        print(f"✅ Cible: {target_col}")
+    elif 'Accident_Severity' in df.columns:
+        target_col = 'Accident_Severity'
+        print(f"✅ Cible: {target_col}")
+    else:
+        print("❌ Colonne cible non trouvée!")
         return None, None
-
-    # Supprimer les NaN
-    df_clean = df.dropna()
-    print(f"✅ Après suppression NaN: {df_clean.shape}")
-
+    
     # Séparer X et y
-    X = df_clean.drop('Accident_Severity', axis=1)
-    y = df_clean['Accident_Severity']
-
+    feature_cols = [col for col in df.columns if col != target_col]
+    X = df[feature_cols]
+    y = df[target_col]
+    
+    # Vérifier que toutes les colonnes sont numériques
+    for col in X.columns:
+        if X[col].dtype == 'object':
+            print(f"⚠️ Colonne non numérique détectée: {col}")
+            print(f"   Valeurs uniques: {X[col].unique()[:5]}")
+            # Supprimer la colonne problématique
+            X = X.drop(columns=[col])
+            print(f"   → Colonne supprimée")
+    
     print(f"✅ Features shape: {X.shape}")
     print(f"✅ Target shape: {y.shape}")
     print(f"\nDistribution de la cible:")
-    severity_labels = {0: "Minor (Accidents légers)", 1: "Severe (Accidents graves)"}
     for cls in sorted(y.unique()):
         count = (y == cls).sum()
         pct = (count / len(y)) * 100
-        print(f"   Classe {cls} ({severity_labels.get(cls, 'Unknown')}): {count:>7} ({pct:>6.2f}%)")
-
+        print(f"   Classe {cls}: {count:>7} ({pct:>6.2f}%)")
+    
     return X, y
+
 def train_model(X, y):
     """Entraîner le modèle Random Forest"""
     print("\n🤖 Entraînement du modèle Random Forest...")
